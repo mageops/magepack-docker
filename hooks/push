@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+set -e -x
+
+[ -z "$VCS_REF" ]           && VCS_REF="$SOURCE_COMMIT"
+[ -z "$VCS_REF" ]           && VCS_REF=`git rev-parse --short HEAD`
+
+[ -z "$VCS_URL" ]           && VCS_URL=`git config --get remote.origin.url`
+[ -z "$VCS_TAG" ]           && VCS_TAG=`git --no-pager tag --points-at "$VCS_REF" | head -n 1`
+
+[ -z "$VCS_BRANCH" ]        && VCS_BRANCH="$SOURCE_BRANCH"
+[ -z "$VCS_BRANCH" ]        && VCS_BRANCH=`git rev-parse --abbrev-ref HEAD`
+
+[ -z "$BUILD_VERSION" ]     && BUILD_VERSION="$DOCKER_TAG"
+[ -z "$BUILD_VERSION" ]     && BUILD_VERSION="${VCS_TAG}"
+[ -z "$BUILD_VERSION" ]     && BUILD_VERSION="${VCS_BRANCH}-${VCS_REF}"
+
+[ -z "$DOCKER_TAG" ]        && DOCKER_TAG="${BUILD_VERSION}"
+[ -z "$IMAGE_NAME" ]        && IMAGE_NAME="${DOCKER_REPO}:${DOCKER_TAG}"
+
+IMAGES=("$IMAGE_NAME")
+
+if [ -n "$VCS_TAG" ];then
+    IMAGES+=("${DOCKER_REPO}:${VCS_TAG}")
+    IMAGES+=("${DOCKER_REPO}:stable")
+fi
+
+for img in "${IMAGES[@]}";do
+    docker push "${img}"
+done
